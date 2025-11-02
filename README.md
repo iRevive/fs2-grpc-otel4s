@@ -8,9 +8,7 @@
 ## Overview
 
 - Integrates otel4s tracing with fs2-grpc ClientAspect and ServiceAspect
-- Propagates context through gRPC metadata 
-- Default spans follow OpenTelemetry RPC semantic conventions with SpanFinalizer.Strategy.reportAbnormal
-- Cross-built for Scala 2.13.17 and 3.3.7 on JVM, Scala.js, and Scala Native
+- Propagates context through gRPC metadata
 
 ## Installation
 

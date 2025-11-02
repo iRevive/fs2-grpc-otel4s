@@ -185,23 +185,3 @@ object TraceServiceAspect {
     }
 
 }
-rategy = finalizationStrategy)
-    }
-
-  }
-
-  def create[F[_]: MonadCancelThrow: TracerProvider]: F[ServiceAspect[F, F, Metadata]] =
-    create(Config.default)
-
-  def create[F[_]: MonadCancelThrow: TracerProvider](config: Config): F[ServiceAspect[F, F, Metadata]] =
-    TracerProvider[F].tracer(config.tracerName).withVersion(BuildInfo.version).get.map { implicit tracer =>
-      implicit val textMapGetter: TextMapGetter[Metadata] = config.textMapGetter
-
-      new TraceServiceAspect[F](
-        config.spanName,
-        config.attributes,
-        config.finalizationStrategy,
-      )
-    }
-
-}

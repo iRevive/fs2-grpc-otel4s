@@ -2,7 +2,7 @@
 
 [otel4s](https://github.com/typelevel/otel4s) instrumentation for [fs2-grpc](https://github.com/typelevel/fs2-grpc).
 
-> [!WARN]
+> [!WARNING]
 > It's experimental software. Use at your own risk.
 
 ## Overview
@@ -31,7 +31,7 @@ def tracedService(using TracerProvider[IO]): Resource[IO, ServerServiceDefinitio
 
 def tracedClient(channel: Channel)(using TracerProvider[IO]): Resource[IO, TestServiceFs2Grpc[IO, Metadata]] =
   for {
-    clientAspect <- Resource.eval(TraceClientAspect.create[IO]())
+    clientAspect <- Resource.eval(TraceClientAspect.create[IO])
     dispatcher   <- Dispatcher.parallel[IO]
   } yield TestServiceFs2Grpc.mkClientFull(dispatcher, channel, clientAspect, ClientOptions.default)
 ```
@@ -40,8 +40,8 @@ def tracedClient(channel: Channel)(using TracerProvider[IO]): Resource[IO, TestS
 
 `TraceClientAspect` and `TraceServiceAspect` expose a `Config` that can be refined before creation.
 
-- `withTracerName` selects the tracer acquired from the provided TracerProvider (default fs2-grpc, version from build info).
-- `withTextMapUpdater` / `withTextMapGetter` adjust metadata propagation (default ASCII gRPC metadata helpers).
-- `withSpanName` and `withAttributes` override naming and attributes; defaults use the gRPC method descriptor plus RPC semantic conventions.
-- `withFinalizationStrategy` sets the `SpanFinalizer.Strategy`; defaults to `reportAbnormal`.
+- `withTracerName` selects the tracer acquired from the provided TracerProvider.
+- `withTextMapUpdater` / `withTextMapGetter` adjust metadata injection - default ASCII key.
+- `withSpanName` and `withAttributes` override naming and attributes - defaults use the gRPC method descriptor and RPC semantic conventions.
+- `withFinalizationStrategy` sets the `SpanFinalizer.Strategy` - defaults to `reportAbnormal`.
 

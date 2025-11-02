@@ -16,20 +16,25 @@
 
 package org.typelevel.fs2grpc.trace
 
-import org.typelevel.otel4s.Attribute
+import org.typelevel.otel4s.{Attribute, AttributeKey}
 
 /** @see
   *   [[https://opentelemetry.io/docs/specs/semconv/rpc/rpc-spans/]]
   */
 private[trace] object CommonAttributes {
 
-  def rpcSystem =
+  private object Keys {
+    val rpcMethod: AttributeKey[String] = AttributeKey.string("rpc.method")
+    val rpcService: AttributeKey[String] = AttributeKey.string("rpc.service")
+  }
+
+  val rpcSystem: Attribute[String] =
     Attribute("rpc.system", "grpc")
 
-  def rpcMethod(method: String) =
-    Attribute("rpc.method", method)
+  def rpcMethod(method: String): Attribute[String] =
+    Keys.rpcMethod(method)
 
-  def rpcService(service: String) =
-    Attribute("rpc.service", service)
+  def rpcService(service: String): Attribute[String] =
+    Keys.rpcService(service)
 
 }

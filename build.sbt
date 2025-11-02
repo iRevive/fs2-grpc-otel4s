@@ -17,7 +17,7 @@ ThisBuild / tlCiDependencyGraphJob := false
 lazy val Versions = new {
   val fs2grpc = "3.0.0"
   val otel4s = "0.14.0"
-  val grpc = "1.76.0"
+  val grpc = scalapb.compiler.Version.grpcJavaVersion
 
   val munit = "1.0.0"
   val munitCatsEffect = "2.1.0"
@@ -25,8 +25,8 @@ lazy val Versions = new {
 
 lazy val munitDependencies = Def.settings(
   libraryDependencies ++= Seq(
-    "org.scalameta" %%% "munit" % Versions.munit % Test,
-    "org.typelevel" %%% "munit-cats-effect" % Versions.munitCatsEffect % Test,
+    "org.scalameta" %% "munit" % Versions.munit % Test,
+    "org.typelevel" %% "munit-cats-effect" % Versions.munitCatsEffect % Test,
   )
 )
 
@@ -36,32 +36,31 @@ lazy val root = tlCrossRootProject.aggregate(
   e2e
 )
 
-lazy val metrics = crossProject(JVMPlatform, JSPlatform, NativePlatform)
-  .crossType(CrossType.Pure)
+lazy val metrics = project
+  .enablePlugins(NoPublishPlugin)
   .in(file("modules/metrics"))
   .settings(munitDependencies)
   .settings(
     name := "fs2-grpc-otel4s-metrics",
     libraryDependencies ++= Seq(
       "org.typelevel" %% "fs2-grpc-runtime" % Versions.fs2grpc,
-      "org.typelevel" %%% "otel4s-core-metrics" % Versions.otel4s,
-      "org.typelevel" %%% "otel4s-semconv" % Versions.otel4s,
-      "org.typelevel" %%% "otel4s-semconv-experimental" % Versions.otel4s % Test,
-      "org.typelevel" %%% "otel4s-semconv-metrics-experimental" % Versions.otel4s % Test,
+      "org.typelevel" %% "otel4s-core-metrics" % Versions.otel4s,
+      "org.typelevel" %% "otel4s-semconv" % Versions.otel4s,
+      "org.typelevel" %% "otel4s-semconv-experimental" % Versions.otel4s % Test,
+      "org.typelevel" %% "otel4s-semconv-metrics-experimental" % Versions.otel4s % Test,
     )
   )
 
-lazy val trace = crossProject(JVMPlatform, JSPlatform, NativePlatform)
-  .crossType(CrossType.Pure)
-  .in(file("modules/trace"))
+lazy val trace = project
   .enablePlugins(BuildInfoPlugin)
+  .in(file("modules/trace"))
   .settings(munitDependencies)
   .settings(
     name := "fs2-grpc-otel4s-trace",
     libraryDependencies ++= Seq(
       "org.typelevel" %% "fs2-grpc-runtime" % Versions.fs2grpc,
-      "org.typelevel" %%% "otel4s-core-trace" % Versions.otel4s,
-      "org.typelevel" %%% "otel4s-semconv" % Versions.otel4s,
+      "org.typelevel" %% "otel4s-core-trace" % Versions.otel4s,
+      "org.typelevel" %% "otel4s-semconv" % Versions.otel4s,
     ),
     buildInfoPackage := "org.typelevel.fs2grpc.trace",
     buildInfoOptions += sbtbuildinfo.BuildInfoOption.PackagePrivate,
@@ -78,13 +77,14 @@ lazy val e2e = project
     name := "fs2-grpc-e2e-test",
     libraryDependencies ++= Seq(
       "org.typelevel" %% "fs2-grpc-runtime" % Versions.fs2grpc,
-      "org.typelevel" %%% "otel4s-core-metrics" % Versions.otel4s,
-      "org.typelevel" %%% "otel4s-semconv" % Versions.otel4s,
+      "org.typelevel" %% "otel4s-core-metrics" % Versions.otel4s,
+      "org.typelevel" %% "otel4s-semconv" % Versions.otel4s,
       "io.grpc" % "grpc-inprocess" % Versions.grpc,
-      "org.typelevel" %%% "otel4s-sdk-testkit" % Versions.otel4s % Test,
-      "org.typelevel" %%% "otel4s-semconv-experimental" % Versions.otel4s % Test,
-      "org.typelevel" %%% "otel4s-semconv-metrics-experimental" % Versions.otel4s % Test,
+      "org.typelevel" %% "otel4s-sdk-testkit" % Versions.otel4s % Test,
+      "org.typelevel" %% "otel4s-semconv-experimental" % Versions.otel4s % Test,
+      "org.typelevel" %% "otel4s-semconv-metrics-experimental" % Versions.otel4s % Test,
     ),
-    scalapbCodeGeneratorOptions ++= Seq(CodeGeneratorOption.Scala3Sources).filter(_ => tlIsScala3.value)
+    scalapbCodeGeneratorOptions ++= Seq(CodeGeneratorOption.Scala3Sources).filter(_ => tlIsScala3.value),
+    scalacOptions += "-Wconf:src=src_managed/.*:silent"
   )
-  .dependsOn(metrics.jvm, trace.jvm)
+  .dependsOn(metrics, trace)

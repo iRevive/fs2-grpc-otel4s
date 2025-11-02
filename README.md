@@ -23,6 +23,8 @@ libraryDependencies += "io.github.irevive" %% "fs2-grpc-otel4s-trace" % "0.0.1"
 The example wires the trace aspects into a generated fs2-grpc service. `TestService` denotes your service implementation.
 
 ```scala
+import org.typelevel.fs2grpc.trace.*
+
 def tracedService(using TracerProvider[IO]): Resource[IO, ServerServiceDefinition] =
   for {
     serviceAspect <- Resource.eval(TraceServiceAspect.create[IO])

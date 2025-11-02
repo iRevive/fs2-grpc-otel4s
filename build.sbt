@@ -12,6 +12,8 @@ val Scala213 = "2.13.17"
 ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.7")
 ThisBuild / scalaVersion := Scala213 // the default Scala
 
+ThisBuild / tlCiDependencyGraphJob := false
+
 lazy val Versions = new {
   val fs2grpc = "3.0.0"
   val otel4s = "0.14.0"
@@ -82,6 +84,7 @@ lazy val e2e = project
       "org.typelevel" %%% "otel4s-sdk-testkit" % Versions.otel4s % Test,
       "org.typelevel" %%% "otel4s-semconv-experimental" % Versions.otel4s % Test,
       "org.typelevel" %%% "otel4s-semconv-metrics-experimental" % Versions.otel4s % Test,
-    )
+    ),
+    scalapbCodeGeneratorOptions ++= Seq(CodeGeneratorOption.Scala3Sources).filter(_ => tlIsScala3.value)
   )
   .dependsOn(metrics.jvm, trace.jvm)

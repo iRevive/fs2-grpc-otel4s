@@ -18,7 +18,7 @@ package org.typelevel.fs2grpc.trace
 
 import cats.Functor
 import cats.syntax.functor._
-import org.typelevel.otel4s.sdk.trace.data.SpanData
+import io.opentelemetry.sdk.trace.data.SpanData
 
 /** A tree representation of a span.
   */
@@ -45,7 +45,7 @@ object SpanTree {
   /** Transforms the given spans into the tree-like structure.
     */
   def of(spans: Iterable[SpanData]): List[SpanTree[SpanData]] = {
-    val byParent = spans.toList.groupBy(s => s.parentSpanContext.map(_.spanIdHex))
+    val byParent = spans.toList.groupBy(s => Option(s.getParentSpanContext).filter(_.isValid).map(_.getSpanId))
     val topNodes = byParent.getOrElse(None, Nil)
     val bottomToTop = sortNodesByDepth(0, topNodes, byParent, Nil)
     val maxDepth = bottomToTop.headOption.map(_.depth).getOrElse(0)
@@ -71,7 +71,7 @@ object SpanTree {
     val calculated = withDepth ++ acc
 
     val children = nodesInDepth.flatMap { n =>
-      nodesByParent.getOrElse(Some(n.spanContext.spanIdHex), Nil)
+      nodesByParent.getOrElse(Some(n.getSpanId), Nil)
     }
 
     children match {
@@ -92,10 +92,10 @@ object SpanTree {
   ): List[SpanTree[SpanData]] = {
     val (nodesOnCurrentDepth, rest) = remaining.span(_.depth == depth)
     val newProcessedNodes = nodesOnCurrentDepth.map { n =>
-      val nodeId = n.data.spanContext.spanIdHex
+      val nodeId = n.data.getSpanId
       val children = nodesByParent
         .getOrElse(Some(nodeId), Nil)
-        .flatMap(c => processedNodesById.get(c.spanContext.spanIdHex))
+        .flatMap(c => processedNodesById.get(c.getSpanId))
       val leaf = SpanTree(n.data, children)
       nodeId -> leaf
     }.toMap

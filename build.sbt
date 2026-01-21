@@ -1,4 +1,4 @@
-ThisBuild / tlBaseVersion := "0.1"
+ThisBuild / tlBaseVersion := "0.2"
 
 ThisBuild / organization := "io.github.irevive"
 ThisBuild / licenses := Seq(License.Apache2)
@@ -8,7 +8,7 @@ ThisBuild / developers := List(
 )
 ThisBuild / startYear := Some(2025)
 
-val Scala213 = "2.13.17"
+val Scala213 = "2.13.18"
 ThisBuild / crossScalaVersions := Seq(Scala213, "3.3.7")
 ThisBuild / scalaVersion := Scala213 // the default Scala
 
@@ -16,7 +16,7 @@ ThisBuild / tlCiDependencyGraphJob := false
 
 lazy val Versions = new {
   val fs2grpc = "3.0.0"
-  val otel4s = "0.14.0"
+  val otel4s = "0.15.0"
   val grpc = scalapb.compiler.Version.grpcJavaVersion
 
   val munit = "1.0.0"
@@ -80,7 +80,7 @@ lazy val e2e = project
       "org.typelevel" %% "otel4s-core-metrics" % Versions.otel4s,
       "org.typelevel" %% "otel4s-semconv" % Versions.otel4s,
       "io.grpc" % "grpc-inprocess" % Versions.grpc,
-      "org.typelevel" %% "otel4s-sdk-testkit" % Versions.otel4s % Test,
+      "org.typelevel" %% "otel4s-oteljava-testkit" % Versions.otel4s % Test,
       "org.typelevel" %% "otel4s-semconv-experimental" % Versions.otel4s % Test,
       "org.typelevel" %% "otel4s-semconv-metrics-experimental" % Versions.otel4s % Test,
     ),

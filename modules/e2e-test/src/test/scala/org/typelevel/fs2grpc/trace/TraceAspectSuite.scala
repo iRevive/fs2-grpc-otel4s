@@ -33,12 +33,15 @@ import hello.world.test_service.{
 import fs2.Stream
 import io.grpc.{Channel, Metadata, Server, ServerServiceDefinition}
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
+import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
+import io.opentelemetry.sdk.trace.data.SpanData
 import munit.{CatsEffectSuite, Location, TestOptions}
 import org.typelevel.otel4s.{Attribute, Attributes}
-import org.typelevel.otel4s.sdk.testkit.OpenTelemetrySdkTestkit
-import org.typelevel.otel4s.sdk.trace.context.propagation.W3CTraceContextPropagator
+import org.typelevel.otel4s.oteljava.testkit.OtelJavaTestkit
+import org.typelevel.otel4s.oteljava.AttributeConverters._
 import org.typelevel.otel4s.semconv.experimental.attributes.RpcExperimentalAttributes
-import org.typelevel.otel4s.trace.{SpanContext, SpanKind, Tracer}
+import org.typelevel.otel4s.trace.{SpanContext, Tracer}
 
 class TraceAspectSuite extends CatsEffectSuite {
 
@@ -56,7 +59,7 @@ class TraceAspectSuite extends CatsEffectSuite {
             name = "root",
             attributes = Attributes.empty,
             traceId = traceId,
-            kind = SpanKind.Internal,
+            kind = SpanKind.INTERNAL,
           ),
           List(
             SpanTree(
@@ -64,7 +67,7 @@ class TraceAspectSuite extends CatsEffectSuite {
                 name = TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName,
                 attributes = attributes,
                 traceId = traceId,
-                kind = SpanKind.Client,
+                kind = SpanKind.CLIENT,
               ),
               List(
                 SpanTree(
@@ -72,7 +75,7 @@ class TraceAspectSuite extends CatsEffectSuite {
                     name = TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName,
                     attributes = attributes,
                     traceId = traceId,
-                    kind = SpanKind.Server,
+                    kind = SpanKind.SERVER,
                   ),
                   List(
                     SpanTree(
@@ -80,7 +83,7 @@ class TraceAspectSuite extends CatsEffectSuite {
                         name = "internal-handler:noStreaming",
                         attributes = Attributes.empty,
                         traceId = traceId,
-                        kind = SpanKind.Internal,
+                        kind = SpanKind.INTERNAL,
                       )
                     )
                   )
@@ -124,7 +127,7 @@ class TraceAspectSuite extends CatsEffectSuite {
           name = "root",
           attributes = Attributes.empty,
           traceId = traceId,
-          kind = SpanKind.Internal,
+          kind = SpanKind.INTERNAL,
         ),
         List(
           SpanTree(
@@ -134,7 +137,7 @@ class TraceAspectSuite extends CatsEffectSuite {
                 Attribute("client-operation", "UnaryToUnaryCallTrailers"),
               ),
               traceId = traceId,
-              kind = SpanKind.Client,
+              kind = SpanKind.CLIENT,
             ),
             List(
               SpanTree(
@@ -144,7 +147,7 @@ class TraceAspectSuite extends CatsEffectSuite {
                     Attribute("service-operation", "UnaryToUnaryCall"),
                   ),
                   traceId = traceId,
-                  kind = SpanKind.Server,
+                  kind = SpanKind.SERVER,
                 ),
                 List(
                   SpanTree(
@@ -152,7 +155,7 @@ class TraceAspectSuite extends CatsEffectSuite {
                       name = "internal-handler:noStreaming",
                       attributes = Attributes.empty,
                       traceId = traceId,
-                      kind = SpanKind.Internal,
+                      kind = SpanKind.INTERNAL,
                     )
                   )
                 )
@@ -214,9 +217,7 @@ class TraceAspectSuite extends CatsEffectSuite {
       serviceConfig: TraceServiceAspect.Config,
   ): Resource[IO, Fix] =
     for {
-      testkit <- OpenTelemetrySdkTestkit.inMemory[IO](
-        textMapPropagators = List(W3CTraceContextPropagator.default)
-      )
+      testkit <- OtelJavaTestkit.builder[IO].withTextMapPropagators(List(W3CTraceContextPropagator.getInstance())).build
 
       dispatcher <- Dispatcher.parallel[IO]
 
@@ -250,16 +251,16 @@ class TraceAspectSuite extends CatsEffectSuite {
 
   private final class Fix(
       val client: TestServiceFs2GrpcTrailers[IO, Metadata],
-      val testkit: OpenTelemetrySdkTestkit[IO],
+      val testkit: OtelJavaTestkit[IO],
       val tracer: Tracer[IO]
   ) {
 
     def collectSpanTree: IO[List[SpanTree[SpanInfo]]] =
       for {
-        spans <- testkit.finishedSpans
+        spans <- testkit.finishedSpans[SpanData]
         // _ <- IO.println(spans.map(_.toString).mkString("\n\n"))
       } yield SpanTree.of(spans).map { tree =>
-        tree.map(s => SpanInfo(s.name, s.attributes.elements, s.spanContext.traceIdHex, s.kind))
+        tree.map(s => SpanInfo(s.getName, s.getAttributes.toScala, s.getTraceId, s.getKind))
       }
 
   }

@@ -137,12 +137,11 @@ object TraceClientAspect {
       ConfigImpl(
         "fs2-grpc",
         TextMapUpdaters.asciiStringMetadataTextMapUpdater,
-        (_, ctx) => ctx.methodDescriptor.getFullMethodName,
+        (_, ctx) => ctx.methodDescriptor.getBareMethodName,
         (_, ctx) =>
           Attributes(
             CommonAttributes.rpcSystem,
-            CommonAttributes.rpcMethod(ctx.methodDescriptor.getBareMethodName),
-            CommonAttributes.rpcService(ctx.methodDescriptor.getServiceName),
+            CommonAttributes.rpcMethod(ctx.methodDescriptor.getFullMethodName),
           ),
         (_, _) => finalizationStrategy
       )

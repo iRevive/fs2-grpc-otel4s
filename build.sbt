@@ -1,4 +1,4 @@
-ThisBuild / tlBaseVersion := "0.2"
+ThisBuild / tlBaseVersion := "0.3"
 
 ThisBuild / organization := "io.github.irevive"
 ThisBuild / licenses := Seq(License.Apache2)
@@ -16,11 +16,11 @@ ThisBuild / tlCiDependencyGraphJob := false
 
 lazy val Versions = new {
   val fs2grpc = "3.0.0"
-  val otel4s = "0.15.0"
+  val otel4s = "0.16.0"
   val grpc = scalapb.compiler.Version.grpcJavaVersion
 
-  val munit = "1.0.0"
-  val munitCatsEffect = "2.1.0"
+  val munit = "1.2.4"
+  val munitCatsEffect = "2.2.0"
 }
 
 lazy val munitDependencies = Def.settings(

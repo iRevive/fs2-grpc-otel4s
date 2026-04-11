@@ -48,9 +48,8 @@ class TraceAspectSuite extends CatsEffectSuite {
   withFixture("follow request's span") { fixture =>
     def expectedSpanTree(traceId: String): List[SpanTree[SpanInfo]] = {
       val attributes = Attributes(
-        RpcExperimentalAttributes.RpcSystem(RpcExperimentalAttributes.RpcSystemValue.Grpc.value),
-        RpcExperimentalAttributes.RpcService(TestServiceGrpc.METHOD_NO_STREAMING.getServiceName),
-        RpcExperimentalAttributes.RpcMethod(TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName),
+        RpcExperimentalAttributes.RpcSystemName(RpcExperimentalAttributes.RpcSystemValue.Grpc.value),
+        RpcExperimentalAttributes.RpcMethod(TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName),
       )
 
       List(
@@ -64,7 +63,7 @@ class TraceAspectSuite extends CatsEffectSuite {
           List(
             SpanTree(
               SpanInfo( // client middleware
-                name = TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName,
+                name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
                 attributes = attributes,
                 traceId = traceId,
                 kind = SpanKind.CLIENT,
@@ -72,7 +71,7 @@ class TraceAspectSuite extends CatsEffectSuite {
               List(
                 SpanTree(
                   SpanInfo( // service middleware
-                    name = TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName,
+                    name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
                     attributes = attributes,
                     traceId = traceId,
                     kind = SpanKind.SERVER,
@@ -132,7 +131,7 @@ class TraceAspectSuite extends CatsEffectSuite {
         List(
           SpanTree(
             SpanInfo( // client middleware
-              name = TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName,
+              name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
               attributes = Attributes(
                 Attribute("client-operation", "UnaryToUnaryCallTrailers"),
               ),
@@ -142,7 +141,7 @@ class TraceAspectSuite extends CatsEffectSuite {
             List(
               SpanTree(
                 SpanInfo( // service middleware
-                  name = TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName,
+                  name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
                   attributes = Attributes(
                     Attribute("service-operation", "UnaryToUnaryCall"),
                   ),

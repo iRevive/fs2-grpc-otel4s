@@ -25,16 +25,12 @@ private[trace] object CommonAttributes {
 
   private object Keys {
     val rpcMethod: AttributeKey[String] = AttributeKey.string("rpc.method")
-    val rpcService: AttributeKey[String] = AttributeKey.string("rpc.service")
   }
 
   val rpcSystem: Attribute[String] =
-    Attribute("rpc.system", "grpc")
+    Attribute("rpc.system.name", "grpc")
 
   def rpcMethod(method: String): Attribute[String] =
     Keys.rpcMethod(method)
-
-  def rpcService(service: String): Attribute[String] =
-    Keys.rpcService(service)
 
 }

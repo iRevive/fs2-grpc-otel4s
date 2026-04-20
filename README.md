@@ -13,7 +13,7 @@
 ## Installation
 
 ```scala
-libraryDependencies += "io.github.irevive" %% "fs2-grpc-otel4s-trace" % "0.3.0"
+libraryDependencies += "io.github.irevive" %% "fs2-grpc-otel4s-trace" % "0.4.0-R1"
 ```
 
 ## Usage

@@ -1,4 +1,4 @@
-ThisBuild / tlBaseVersion := "0.3"
+ThisBuild / tlBaseVersion := "0.4"
 
 ThisBuild / organization := "io.github.irevive"
 ThisBuild / licenses := Seq(License.Apache2)
@@ -16,7 +16,7 @@ ThisBuild / tlCiDependencyGraphJob := false
 
 lazy val Versions = new {
   val fs2grpc = "3.0.0"
-  val otel4s = "0.16.0"
+  val otel4s = "1.0.0-RC1"
   val grpc = scalapb.compiler.Version.grpcJavaVersion
 
   val munit = "1.2.4"

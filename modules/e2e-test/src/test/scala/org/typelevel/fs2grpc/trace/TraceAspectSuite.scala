@@ -18,8 +18,6 @@ package org.typelevel.fs2grpc.trace
 
 import cats.effect.{Async, IO, Resource}
 import cats.effect.std.Dispatcher
-import cats.syntax.functor._
-import cats.syntax.applicative._
 import fs2.grpc.client.ClientOptions
 import fs2.grpc.server.ServerOptions
 import fs2.grpc.syntax.all._
@@ -33,59 +31,52 @@ import hello.world.test_service.{
 import fs2.Stream
 import io.grpc.{Channel, Metadata, Server, ServerServiceDefinition}
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
-import io.opentelemetry.api.trace.SpanKind
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
-import io.opentelemetry.sdk.trace.data.SpanData
 import munit.{CatsEffectSuite, Location, TestOptions}
 import org.typelevel.otel4s.{Attribute, Attributes}
 import org.typelevel.otel4s.oteljava.testkit.OtelJavaTestkit
-import org.typelevel.otel4s.oteljava.AttributeConverters._
+import org.typelevel.otel4s.oteljava.testkit.trace.{
+  SpanContextExpectation,
+  SpanExpectation,
+  TraceExpectation,
+  TraceExpectations,
+  TraceForestExpectation,
+}
 import org.typelevel.otel4s.semconv.experimental.attributes.RpcExperimentalAttributes
-import org.typelevel.otel4s.trace.{SpanContext, Tracer}
+import org.typelevel.otel4s.trace.{SpanContext, SpanKind, Tracer}
 
 class TraceAspectSuite extends CatsEffectSuite {
 
   withFixture("follow request's span") { fixture =>
-    def expectedSpanTree(traceId: String): List[SpanTree[SpanInfo]] = {
+    def expectedTraces(traceId: String): TraceForestExpectation = {
       val attributes = Attributes(
         RpcExperimentalAttributes.RpcSystemName(RpcExperimentalAttributes.RpcSystemValue.Grpc.value),
         RpcExperimentalAttributes.RpcMethod(TestServiceGrpc.METHOD_NO_STREAMING.getFullMethodName),
       )
 
-      List(
-        SpanTree(
-          SpanInfo( // root 'outside' span
-            name = "root",
-            attributes = Attributes.empty,
-            traceId = traceId,
-            kind = SpanKind.INTERNAL,
-          ),
-          List(
-            SpanTree(
-              SpanInfo( // client middleware
-                name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
-                attributes = attributes,
-                traceId = traceId,
-                kind = SpanKind.CLIENT,
+      TraceForestExpectation.ordered(
+        TraceExpectation.ordered(
+          spanExpectation("root", Attributes.empty, traceId, SpanKind.Internal),
+          TraceExpectation.ordered(
+            spanExpectation(
+              TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
+              attributes,
+              traceId,
+              SpanKind.Client
+            ),
+            TraceExpectation.ordered(
+              spanExpectation(
+                TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
+                attributes,
+                traceId,
+                SpanKind.Server
               ),
-              List(
-                SpanTree(
-                  SpanInfo( // service middleware
-                    name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
-                    attributes = attributes,
-                    traceId = traceId,
-                    kind = SpanKind.SERVER,
-                  ),
-                  List(
-                    SpanTree(
-                      SpanInfo( // service handler
-                        name = "internal-handler:noStreaming",
-                        attributes = Attributes.empty,
-                        traceId = traceId,
-                        kind = SpanKind.INTERNAL,
-                      )
-                    )
-                  )
+              TraceExpectation.leaf(
+                spanExpectation(
+                  "internal-handler:noStreaming",
+                  Attributes.empty,
+                  traceId,
+                  SpanKind.Internal
                 )
               )
             )
@@ -102,12 +93,10 @@ class TraceAspectSuite extends CatsEffectSuite {
 
       traceContext <- rootSpanContext.get
 
-      spanTree <- fixture.collectSpanTree
-      _ <- IO.println(spanTree.map(renderTree).mkString("\n")).whenA(false)
+      _ <- fixture.assertTraces(expectedTraces(traceContext.traceIdHex))
     } yield {
       // server middleware shouldn't inject tracing info into response metadata
       assertEquals(response._2.keys().size(), 0)
-      assertEquals(spanTree, expectedSpanTree(traceContext.traceIdHex))
     }
   }
 
@@ -120,50 +109,40 @@ class TraceAspectSuite extends CatsEffectSuite {
       .withTracerName("service-tracer")
       .withAttributes((a, _) => Attributes(Attribute("service-operation", a.toString))),
   ) { fixture =>
-    def expectedSpanTree(traceId: String): List[SpanTree[SpanInfo]] = List(
-      SpanTree(
-        SpanInfo( // root 'outside' span
-          name = "root",
-          attributes = Attributes.empty,
-          traceId = traceId,
-          kind = SpanKind.INTERNAL,
-        ),
-        List(
-          SpanTree(
-            SpanInfo( // client middleware
-              name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
-              attributes = Attributes(
+    def expectedTraces(traceId: String): TraceForestExpectation =
+      TraceForestExpectation.ordered(
+        TraceExpectation.ordered(
+          spanExpectation("root", Attributes.empty, traceId, SpanKind.Internal),
+          TraceExpectation.ordered(
+            spanExpectation(
+              TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
+              Attributes(
                 Attribute("client-operation", "UnaryToUnaryCallTrailers"),
               ),
-              traceId = traceId,
-              kind = SpanKind.CLIENT,
+              traceId,
+              SpanKind.Client
             ),
-            List(
-              SpanTree(
-                SpanInfo( // service middleware
-                  name = TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
-                  attributes = Attributes(
-                    Attribute("service-operation", "UnaryToUnaryCall"),
-                  ),
-                  traceId = traceId,
-                  kind = SpanKind.SERVER,
+            TraceExpectation.ordered(
+              spanExpectation(
+                TestServiceGrpc.METHOD_NO_STREAMING.getBareMethodName,
+                Attributes(
+                  Attribute("service-operation", "UnaryToUnaryCall"),
                 ),
-                List(
-                  SpanTree(
-                    SpanInfo( // service handler
-                      name = "internal-handler:noStreaming",
-                      attributes = Attributes.empty,
-                      traceId = traceId,
-                      kind = SpanKind.INTERNAL,
-                    )
-                  )
+                traceId,
+                SpanKind.Server
+              ),
+              TraceExpectation.leaf(
+                spanExpectation(
+                  "internal-handler:noStreaming",
+                  Attributes.empty,
+                  traceId,
+                  SpanKind.Internal
                 )
               )
             )
           )
         )
       )
-    )
 
     for {
       rootSpanContext <- IO.deferred[SpanContext]
@@ -173,34 +152,24 @@ class TraceAspectSuite extends CatsEffectSuite {
 
       traceContext <- rootSpanContext.get
 
-      spanTree <- fixture.collectSpanTree
-      _ <- IO.println(spanTree.map(renderTree).mkString("\n")).whenA(false)
+      _ <- fixture.assertTraces(expectedTraces(traceContext.traceIdHex))
     } yield {
       // server middleware shouldn't inject tracing info into response metadata
       assertEquals(response._2.keys().size(), 0)
-      assertEquals(spanTree, expectedSpanTree(traceContext.traceIdHex))
     }
   }
 
-  case class SpanInfo(
+  private def spanExpectation(
       name: String,
       attributes: Attributes,
       traceId: String,
       kind: SpanKind,
-  )
-
-  private def renderTree[A](tree: SpanTree[A]): String = {
-    def loop(input: SpanTree[A], depth: Int): String = {
-      val prefix = " " * depth
-      val next =
-        if (input.children.isEmpty) ""
-        else " =>\n" + input.children.map(loop(_, depth + 2)).mkString("\n")
-
-      s"$prefix${input.current}$next"
-    }
-
-    loop(tree, 0)
-  }
+  ): SpanExpectation =
+    SpanExpectation
+      .name(name)
+      .kind(kind)
+      .attributesExact(attributes)
+      .spanContext(SpanContextExpectation.any.traceIdHex(traceId))
 
   private def withFixture[A](
       opts: TestOptions,
@@ -253,13 +222,14 @@ class TraceAspectSuite extends CatsEffectSuite {
       val testkit: OtelJavaTestkit[IO],
       val tracer: Tracer[IO]
   ) {
-
-    def collectSpanTree: IO[List[SpanTree[SpanInfo]]] =
-      for {
-        spans <- testkit.finishedSpans[SpanData]
-        // _ <- IO.println(spans.map(_.toString).mkString("\n\n"))
-      } yield SpanTree.of(spans).map { tree =>
-        tree.map(s => SpanInfo(s.getName, s.getAttributes.toScala, s.getTraceId, s.getKind))
+    def assertTraces(expectation: TraceForestExpectation)(implicit loc: Location): IO[Unit] =
+      testkit.finishedSpans.flatMap { spans =>
+        TraceExpectations.check(spans, expectation) match {
+          case Right(_) =>
+            IO.unit
+          case Left(mismatches) =>
+            IO(fail(TraceExpectations.format(mismatches)))
+        }
       }
 
   }
